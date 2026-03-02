@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workout Builder</title>
+  <style>
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0f0f13;
+      color: #f0f0f0;
+      min-height: 100dvh;
+      display: flex;
+      justify-content: center;
+      padding: 1rem 1rem 4rem;
+    }
+
+    #app { width: 100%; max-width: 600px; }
+
+    /* ── Screens ── */
+    .screen { display: none; animation: fadeIn 0.2s ease; }
+    .screen.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; } }
+
+    /* ── Typography ── */
+    h1 { font-size: 1.75rem; font-weight: 800; line-height: 1.2; }
+    h2 { font-size: 1.2rem; font-weight: 700; }
+    .subtitle { color: #888; font-size: 0.9rem; margin-top: 0.4rem; }
+
+    /* ── Layout helpers ── */
+    .stack { display: flex; flex-direction: column; gap: 0.75rem; }
+    .row   { display: flex; gap: 0.75rem; }
+    .section-gap { margin-top: 2rem; }
+    .page-top { padding: 1.75rem 0 1.5rem; }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1.25rem 0 0.75rem;
+    }
+    .header h2 { flex: 1; }
+    .btn-back {
+      background: none;
+      border: none;
+      color: #888;
+      font-size: 1.4rem;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0.2rem;
+    }
+    .btn-back:hover { color: #fff; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      width: 100%;
+      padding: 0.85rem 1.5rem;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: filter 0.12s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary   { background: #6c63ff; color: #fff; }
+    .btn-secondary { background: #1e1e2e; color: #ccc; border: 1px solid #2e2e40; }
+    .btn-danger    { background: #e53e3e; color: #fff; }
+    .btn-primary:hover   { filter: brightness(1.15); }
+    .btn-secondary:hover { border-color: #6c63ff; color: #fff; }
+    .btn-danger:hover    { filter: brightness(1.15); }
+    .btn-sm { width: auto; padding: 0.4rem 0.85rem; font-size: 0.8rem; border-radius: 8px; }
+
+    /* ── Checkbox cards (materials) ── */
+    .material-card {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: #1a1a24;
+      border: 2px solid #2a2a3a;
+      border-radius: 12px;
+      padding: 1rem;
+      cursor: pointer;
+      user-select: none;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .material-card.selected {
+      border-color: #6c63ff;
+      background: rgba(108, 99, 255, 0.1);
+    }
+    .material-icon { font-size: 1.4rem; }
+    .material-label { font-weight: 500; flex: 1; }
+    .check-box {
+      width: 22px;
+      height: 22px;
+      border: 2px solid #444;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      flex-shrink: 0;
+      transition: all 0.12s;
+    }
+    .material-card.selected .check-box {
+      background: #6c63ff;
+      border-color: #6c63ff;
+      color: #fff;
+    }
+
+    /* ── Exercise item (routine view) ── */
+    .exercise-item {
+      background: #1a1a24;
+      border: 1px solid #2a2a3a;
+      border-radius: 12px;
+      padding: 1rem;
+    }
+    .exercise-row-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+    .exercise-name { font-weight: 600; font-size: 0.975rem; }
+    .material-tag {
+      font-size: 0.7rem;
+      background: rgba(108, 99, 255, 0.15);
+      color: #a8a3ff;
+      padding: 3px 8px;
+      border-radius: 99px;
+    }
+    .exercise-fields {
+      display: flex;
+      gap: 0.5rem;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .field-label {
+      font-size: 0.68rem;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .field-input {
+      width: 72px;
+      padding: 0.3rem 0.5rem;
+      background: #0f0f13;
+      border: 1px solid #2a2a3a;
+      border-radius: 6px;
+      color: #f0f0f0;
+      font-size: 0.875rem;
+      text-align: center;
+    }
+    .field-input:focus { outline: none; border-color: #6c63ff; }
+
+    /* ── Saved routine card ── */
+    .routine-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #1a1a24;
+      border: 1px solid #2a2a3a;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      gap: 1rem;
+    }
+    .routine-info { min-width: 0; }
+    .routine-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .routine-meta { font-size: 0.78rem; color: #666; margin-top: 2px; }
+    .routine-btns { display: flex; gap: 0.5rem; flex-shrink: 0; }
+
+    /* ── Execution screen ── */
+    .exec-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1.25rem 0 1rem;
+    }
+    .exec-counter { font-size: 0.875rem; font-weight: 600; color: #888; margin-left: auto; }
+
+    .progress-track {
+      height: 5px;
+      background: #1e1e2e;
+      border-radius: 99px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .progress-fill {
+      height: 100%;
+      background: #6c63ff;
+      border-radius: 99px;
+      transition: width 0.5s ease;
+    }
+
+    .phase-badge {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #6c63ff;
+      background: rgba(108, 99, 255, 0.12);
+      padding: 4px 12px;
+      border-radius: 99px;
+      margin-bottom: 0.75rem;
+    }
+    .phase-badge.rest { color: #fbbf24; background: rgba(251, 191, 36, 0.12); }
+
+    .exec-exercise-name {
+      font-size: 1.75rem;
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 1.5rem;
+    }
+
+    .timer-display {
+      font-size: 6rem;
+      font-weight: 800;
+      line-height: 1;
+      color: #6c63ff;
+      font-variant-numeric: tabular-nums;
+      margin-bottom: 0.75rem;
+    }
+    .timer-display.rest { color: #fbbf24; }
+
+    .next-label {
+      font-size: 0.85rem;
+      color: #666;
+      margin-bottom: 2rem;
+    }
+
+    .exec-controls { display: flex; gap: 0.75rem; }
+    .btn-stop { max-width: 56px; padding: 0.85rem 0; }
+
+    /* ── Exercise illustration ── */
+    .illustration-wrap {
+      display: flex;
+      justify-content: center;
+      margin: 0.25rem 0 1rem;
+    }
+    #exec-illustration {
+      width: 130px;
+      height: 95px;
+      overflow: visible;
+    }
+
+    /* ── Completion overlay ── */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 15, 19, 0.94);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      text-align: center;
+      padding: 2rem;
+      z-index: 50;
+    }
+    .overlay.show { display: flex; }
+    .overlay-emoji { font-size: 4rem; }
+    .overlay h2 { font-size: 1.75rem; }
+    .overlay p  { color: #888; }
+
+    @media (max-width: 380px) {
+      h1 { font-size: 1.4rem; }
+      .timer-display { font-size: 4.5rem; }
+      .exec-exercise-name { font-size: 1.4rem; }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ════════════ HOME ════════════ -->
+  <div id="screen-home" class="screen">
+    <div class="page-top">
+      <h1>💪 Workout Builder</h1>
+      <p class="subtitle">Crea y ejecuta rutinas con el equipo que tienes en casa.</p>
+    </div>
+    <div class="stack">
+      <button class="btn btn-primary"    onclick="goTo('materials')">+ Crear nueva rutina</button>
+      <button class="btn btn-secondary"  onclick="scrollToSaved()">Mis rutinas guardadas</button>
+    </div>
+    <div id="home-saved" class="section-gap"></div>
+  </div>
+
+  <!-- ════════════ MATERIALS ════════════ -->
+  <div id="screen-materials" class="screen">
+    <div class="header">
+      <button class="btn-back" onclick="goTo('home')">←</button>
+      <h2>¿Con qué entrenas?</h2>
+    </div>
+    <p class="subtitle" style="margin-bottom:1.25rem;">Selecciona todos los materiales disponibles.</p>
+    <div class="stack" id="materials-list"></div>
+    <div style="margin-top:1.25rem;">
+      <button class="btn btn-primary" onclick="handleGenerate()">Generar rutina →</button>
+    </div>
+  </div>
+
+  <!-- ════════════ ROUTINE ════════════ -->
+  <div id="screen-routine" class="screen">
+    <div class="header">
+      <button class="btn-back" onclick="goTo('materials')">←</button>
+      <h2>Tu rutina</h2>
+    </div>
+    <div class="stack" id="routine-list"></div>
+    <div class="row" style="margin-top:1.25rem;">
+      <button class="btn btn-secondary" onclick="saveRoutine()">💾 Guardar</button>
+      <button class="btn btn-primary"   onclick="startExecution()">▶ Iniciar</button>
+    </div>
+  </div>
+
+  <!-- ════════════ EXECUTION ════════════ -->
+  <div id="screen-execution" class="screen">
+    <div class="exec-header">
+      <button class="btn-back" onclick="confirmStop()">←</button>
+      <span class="exec-counter" id="exec-counter"></span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="exec-progress" style="width:0%"></div>
+    </div>
+    <div id="exec-phase-badge" class="phase-badge">EJERCICIO</div>
+    <div class="exec-exercise-name" id="exec-name"></div>
+    <div class="illustration-wrap">
+      <svg id="exec-illustration" viewBox="0 0 120 90" xmlns="http://www.w3.org/2000/svg"
+        style="stroke:#a8a3ff;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;fill:none"></svg>
+    </div>
+    <div class="timer-display" id="exec-timer">--</div>
+    <div class="next-label" id="exec-next"></div>
+    <div class="exec-controls">
+      <button class="btn btn-secondary" id="btn-pause"  onclick="togglePause()">⏸ Pausar</button>
+      <button class="btn btn-primary"                   onclick="nextExercise()">→ Siguiente</button>
+      <button class="btn btn-danger btn-stop"           onclick="confirmStop()">✕</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Completion overlay -->
+<div class="overlay" id="overlay-done">
+  <div class="overlay-emoji">🎉</div>
+  <h2>¡Rutina completada!</h2>
+  <p id="overlay-stats"></p>
+  <button class="btn btn-primary" style="max-width:300px; margin-top:0.5rem;" onclick="finishRoutine()">Volver al inicio</button>
+</div>
+
+<script>
+/* ══════════════════════════════════════════
+   STATE
+══════════════════════════════════════════ */
+const appState = {
+  screen: 'home',
+  selectedMaterials: [],
+  currentRoutine: [],
+  timer: {
+    exerciseIndex: 0,
+    phase: 'exercise',  // 'exercise' | 'rest'
+    countdown: 0,
+    paused: false,
+    intervalId: null,
+    startTime: null
+  }
+};
+
+/* ══════════════════════════════════════════
+   EXERCISE DATABASE
+══════════════════════════════════════════ */
+const EXERCISE_DB = {
+  bodyweight: [
+    { nombre: 'Flexiones',              duracionSegundos: 40, descansoSegundos: 20 },
+    { nombre: 'Sentadillas',            duracionSegundos: 40, descansoSegundos: 20 },
+    { nombre: 'Zancadas alternas',      duracionSegundos: 40, descansoSegundos: 20 },
+    { nombre: 'Plancha',                duracionSegundos: 30, descansoSegundos: 15 },
+    { nombre: 'Mountain Climbers',      duracionSegundos: 30, descansoSegundos: 15 },
+    { nombre: 'Burpees',                duracionSegundos: 30, descansoSegundos: 20 },
+    { nombre: 'Saltos de tijera',       duracionSegundos: 40, descansoSegundos: 15 },
+    { nombre: 'Elevación de piernas',   duracionSegundos: 30, descansoSegundos: 15 },
+    { nombre: 'Superman',               duracionSegundos: 30, descansoSegundos: 15 },
+    { nombre: 'Sentadilla sumo',        duracionSegundos: 40, descansoSegundos: 20 }
+  ],
+  dumbbells: [
+    { nombre: 'Curl de bíceps',         duracionSegundos: 40, descansoSegundos: 30 },
+    { nombre: 'Press de hombros',       duracionSegundos: 40, descansoSegundos: 30 },
+    { nombre: 'Remo inclinado',         duracionSegundos: 40, descansoSegundos: 30 },
+    { nombre: 'Press de pecho (suelo)', duracionSegundos: 40, descansoSegundos: 30 },
+    { nombre: 'Extensión de tríceps',   duracionSegundos: 35, descansoSegundos: 25 },
+    { nombre: 'Elevaciones laterales',  duracionSegundos: 35, descansoSegundos: 25 }
+  ],
+  bands: [
+    { nombre: 'Jalón de banda',         duracionSegundos: 40, descansoSegundos: 20 },
+    { nombre: 'Press de pecho con banda',duracionSegundos: 40, descansoSegundos: 20 },
+    { nombre: 'Sentadilla con banda',   duracionSegundos: 40, descansoSegundos: 20 },
+    { nombre: 'Curl con banda',         duracionSegundos: 35, descansoSegundos: 20 }
+  ],
+  kettlebell: [
+    { nombre: 'Kettlebell Swing',       duracionSegundos: 40, descansoSegundos: 30 },
+    { nombre: 'Goblet Squat',           duracionSegundos: 40, descansoSegundos: 25 },
+    { nombre: 'Press con kettlebell',   duracionSegundos: 35, descansoSegundos: 25 },
+    { nombre: 'Remo con kettlebell',    duracionSegundos: 35, descansoSegundos: 25 }
+  ],
+  bench: [
+    { nombre: 'Dips en banco',          duracionSegundos: 40, descansoSegundos: 30 },
+    { nombre: 'Step-up en banco',       duracionSegundos: 40, descansoSegundos: 25 },
+    { nombre: 'Flexiones inclinadas',   duracionSegundos: 40, descansoSegundos: 20 }
+  ],
+  barbell: [
+    { nombre: 'Sentadilla con barra',   duracionSegundos: 45, descansoSegundos: 60 },
+    { nombre: 'Peso muerto',            duracionSegundos: 45, descansoSegundos: 60 },
+    { nombre: 'Press banca (suelo)',    duracionSegundos: 40, descansoSegundos: 50 },
+    { nombre: 'Remo con barra',         duracionSegundos: 40, descansoSegundos: 50 }
+  ]
+};
+
+const MATERIALS_CONFIG = [
+  { id: 'bodyweight', label: 'Peso corporal',  icon: '🏃' },
+  { id: 'dumbbells',  label: 'Mancuernas',     icon: '🏋️' },
+  { id: 'bands',      label: 'Banda elástica', icon: '🎗️' },
+  { id: 'kettlebell', label: 'Kettlebell',      icon: '⚫' },
+  { id: 'bench',      label: 'Banco / Silla',  icon: '🪑' },
+  { id: 'barbell',    label: 'Barra',           icon: '🏋️‍♂️' }
+];
+
+/* ══════════════════════════════════════════
+   ILLUSTRATIONS  — stick-figure SVG inner content
+   ViewBox 0 0 120 90 | stroke #a8a3ff | equipment #fbbf24
+══════════════════════════════════════════ */
+const ILLUSTRATIONS = {
+  squat: `
+    <circle cx="60" cy="9"  r="7" fill="#a8a3ff" fill-opacity="0.15"/>
+    <line x1="60" y1="16" x2="60" y2="46"/>
+    <line x1="60" y1="26" x2="42" y2="36"/><line x1="60" y1="26" x2="78" y2="36"/>
+    <line x1="52" y1="46" x2="33" y2="64"/><line x1="33" y1="64" x2="36" y2="82"/>
+    <line x1="68" y1="46" x2="87" y2="64"/><line x1="87" y1="64" x2="84" y2="82"/>
+    <line x1="18" y1="82" x2="102" y2="82" stroke-opacity=".25"/>`,
+
+  push_up: `
+    <circle cx="108" cy="50" r="7" fill="#a8a3ff" fill-opacity="0.15"/>
+    <line x1="100" y1="54" x2="14"  y2="62"/>
+    <line x1="82"  y1="55" x2="82"  y2="82"/>
+    <line x1="40"  y1="59" x2="40"  y2="82"/>
+    <line x1="14"  y1="62" x2="5"   y2="82"/>
+    <line x1="0"   y1="82" x2="120" y2="82" stroke-opacity=".25"/>`,
+
+  lunge: `
+    <circle cx="60" cy="9"  r="7" fill="#a8a3ff" fill-opacity="0.15"/>
+    <line x1="60" y1="16" x2="60" y2="44"/>
+    <line x1="60" y1="26" x2="44" y2="36"/><line x1="60" y1="26" x2="76" y2="36"/>
+    <line x1="64" y1="44" x2="86" y2="58"/><line x1="86" y1="58" x2="89" y2="80"/>
+    <line x1="56" y1="44" x2="36" y2="56"/><line x1="36" y1="56" x2="30" y2="80"/>
+    <line x1="15" y1="80" x2="105" y2="80" stroke-opacity=".25"/>`,
+
+  plank: `
+    <circle cx="108" cy="44" r="7" fill="#a8a3ff" fill-opacity="0.15"/>
+    <line x1="100" y1="48" x2="14" y2="54"/>
+    <line x1="80" y1="49" x2="80" y2="68"/><line x1="80" y1="68" x2="60" y2="68"/>
+    <line x1="38" y1="52" x2="38" y2="72"/><line x1="38" y1="72" x2="18" y2="72"/>
+    <line x1="14" y1="54" x2="5"  y2="72"/>
+    <line x1="0"  y1="72" x2="120" y2="72" stroke-opacity=".25"/>`,
+
+  mountain_climber: `
+    <circle cx="106" cy="38" r="7" fill="#a8a3ff" fill-opacity="0.15"/>
+    <line x1="98" y1="42" x2="14" y2="50"/>
+    <line x1="80" y1="43" x2="80" y2="64"/><line x1="80" y1="64" x2="60" y2="64"/>
+    <line x1="38" y1="47" x2="38" y2="68"/><line x1="38" y1="68" x2="18" y2="68"/>
+    <line x1="14" y1="50" x2="40" y2="62"/><line x1="40" y1="62" x2="36" y2="68"/>
+    <line x1="10" y1="50" x2="5"  y2="68"/>
+    <line x1="0"  y1="68" x2="120" y2="68" stroke-opacity=".25"/>`,
+
+  jumping_jack: `
+    <circle cx="60" cy="8"  r="7" fill="#a8a3ff" fill-opacity="0.15"/>
+    <line x1="60" y1="15" x2="60" y2="52"/>
+    <line x1="60" y1="24" x2="20" y2="10"/><line x1="60" y1="24" x2="100" y2="10"/>
+    <line x1="60" y1="52" x2="28" y2="80"/><line x1="60"  y1="52" x2="92" y2="80"/>
+    <line x1="14" y1="82" x2="106" y2="82" stroke-opacity=".25"/>`,
+
+  burpee: `
+    <circle cx="60" cy="7"  r="7" fill="#a8a3ff" fill-opacity="0.15"/>
+    <line x1="60" y1="14" x2="60" y2="50"/>
+    <line x1="60" y1="24" x2="30" y2="14"/><line x1="60" y1="24" x2="90" y2="14"/>
+    <line x1="55" y1="50" x2="38" y2="68"/><line x1="38" y1="68" x2="35" y2="82"/>
+    <line x1="65" y1="50" x2="82" y2="68"/><line x1="82" y1="68" x2="85" y2="82"/>
+    <line x1="22" y1="82" x2="98" y2="82" stroke-opacity=".25"/>`,
+
+  leg_raise: `
+    <circle cx="13" cy="52" r="7" fill="#a8a3ff" fill-opacity="0.15"/>
+    <line x1="20" y1="52" x2="96" y2="58"/>
+    <line x1="28" y1="51" x2="28" y2="66"/><line x1="32" y1="51" x2="32" y2="66"/>
+    <line x1="85" y1="56" x2="74" y2="24"/><line x1="91" y1="57" x2="80" y2="24"/>
+    <line x1="0"  y1="66" x2="120" y2="66" stroke-opacity=".25"/>`,
+
+  superman: `
+    <circle cx="13" cy="45" r="7" fill="#a8a3ff" fill-opacity="0.15"/>
+    <line x1="20" y1="45" x2="96" y2="48"/>
+    <line x1="26" y1="43" x2="6"  y2="30"/><line x1="30" y1="42" x2="10" y2="29"/>
+    <line x1="88" y1="47" x2="110" y2="36"/><line x1="90" y1="48" x2="112" y2="38"/>
+    <line x1="0"  y1="64" x2="120" y2="64" stroke-opacity=".25"/>`,
+
+  curl: `
+    <circle cx="60" cy="8"  r="7" fill="#a8a3ff" fill-opacity="0.15"/>
+    <line x1="60" y1="15" x2="60" y2="52"/>
+    <line x1="60" y1="25" x2="40" y2="35"/><line x1="40" y1="35" x2="36" y2="18"/>
+    <line x1="60" y1="25" x2="80" y2="35"/><line x1="80" y1="35" x2="84" y2="18"/>
+    <rect x="30" y="14" width="11" height="5" rx="1" stroke="#fbbf24" fill="#fbbf24"/>
+    <rect x="79" y="14" width="11" height="5" rx="1" stroke="#fbbf24" fill="#fbbf24"/>
+    <line x1="55" y1="52" x2="46" y2="80"/><line x1="65" y1="52" x2="74" y2="80"/>
+    <line x1="32" y1="80" x2="88" y2="80" stroke-opacity=".25"/>`,
+
+  shoulder_press: `
+    <circle cx="60" cy="8"  r="7" fill="#a8a3ff" fill-opacity="0.15"/>
+    <line x1="60" y1="15" x2="60" y2="53"/>
+    <line x1="60" y1="25" x2="38" y2="36"/><line x1="38" y1="36" x2="30" y2="12"/>
+    <line x1="60" y1="25" x2="82" y2="36"/><line x1="82" y1="36" x2="90" y2="12"/>
+    <rect x="20" y="9"  width="14" height="5" rx="1" stroke="#fbbf24" fill="#fbbf24"/>
+    <rect x="86" y="9"  width="14" height="5" rx="1" stroke="#fbbf24" fill="#fbbf24"/>
+    <line x1="55" y1="53" x2="46" y2="81"/><line x1="65" y1="53" x2="74" y2="81"/>
+    <line x1="32" y1="81" x2="88" y2="81" stroke-opacity=".25"/>`,
+
+  bent_row: `
+    <circle cx="88" cy="22" r="7" fill="#a8a3ff" fill-opacity="0.15"/>
+    <line x1="82" y1="26" x2="30" y2="48"/>
+    <line x1="68" y1="32" x2="68" y2="58"/>
+    <line x1="44" y1="40" x2="38" y2="28"/>
+    <rect x="32" y="24" width="9" height="5" rx="1" stroke="#fbbf24" fill="#fbbf24"/>
+    <line x1="30" y1="48" x2="18" y2="72"/><line x1="34" y1="50" x2="36" y2="72"/>
+    <line x1="4"  y1="72" x2="88" y2="72" stroke-opacity=".25"/>`,
+
+  swing: `
+    <circle cx="76" cy="12" r="7" fill="#a8a3ff" fill-opacity="0.15"/>
+    <line x1="71" y1="18" x2="50" y2="46"/>
+    <line x1="64" y1="26" x2="40" y2="40"/><line x1="40" y1="40" x2="28" y2="54"/>
+    <circle cx="22" cy="59" r="6" stroke="#fbbf24"/>
+    <line x1="22" y1="53" x2="28" y2="54"/>
+    <line x1="50" y1="46" x2="38" y2="66"/><line x1="38" y1="66" x2="36" y2="82"/>
+    <line x1="50" y1="46" x2="64" y2="66"/><line x1="64" y1="66" x2="67" y2="82"/>
+    <line x1="20" y1="82" x2="90" y2="82" stroke-opacity=".25"/>`,
+
+  deadlift: `
+    <circle cx="80" cy="16" r="7" fill="#a8a3ff" fill-opacity="0.15"/>
+    <line x1="74" y1="21" x2="40" y2="50"/>
+    <line x1="63" y1="30" x2="44" y2="52"/>
+    <line x1="12" y1="57" x2="108" y2="57" stroke="#fbbf24" stroke-width="2.5"/>
+    <circle cx="9"   cy="57" r="6" stroke="#fbbf24"/>
+    <circle cx="111" cy="57" r="6" stroke="#fbbf24"/>
+    <line x1="40" y1="50" x2="28" y2="72"/><line x1="28" y1="72" x2="26" y2="84"/>
+    <line x1="44" y1="52" x2="56" y2="68"/><line x1="56" y1="68" x2="58" y2="84"/>
+    <line x1="15" y1="84" x2="86" y2="84" stroke-opacity=".25"/>`,
+
+  step_up: `
+    <circle cx="60" cy="9"  r="7" fill="#a8a3ff" fill-opacity="0.15"/>
+    <line x1="60" y1="16" x2="60" y2="46"/>
+    <line x1="60" y1="26" x2="44" y2="36"/><line x1="60" y1="26" x2="76" y2="36"/>
+    <line x1="64" y1="46" x2="82" y2="58"/><line x1="82" y1="58" x2="84" y2="50"/>
+    <rect x="66" y="48" width="48" height="7" rx="2" stroke="#fbbf24" fill="#fbbf24" fill-opacity=".25"/>
+    <line x1="56" y1="46" x2="42" y2="62"/><line x1="42" y1="62" x2="40" y2="82"/>
+    <line x1="0"  y1="82" x2="120" y2="82" stroke-opacity=".25"/>`,
+
+  lateral_raise: `
+    <circle cx="60" cy="8"  r="7" fill="#a8a3ff" fill-opacity="0.15"/>
+    <line x1="60" y1="15" x2="60" y2="53"/>
+    <line x1="60" y1="24" x2="10" y2="40"/><line x1="60" y1="24" x2="110" y2="40"/>
+    <rect x="1"   y="37" width="12" height="5" rx="1" stroke="#fbbf24" fill="#fbbf24"/>
+    <rect x="107" y="37" width="12" height="5" rx="1" stroke="#fbbf24" fill="#fbbf24"/>
+    <line x1="55" y1="53" x2="46" y2="81"/><line x1="65" y1="53" x2="74" y2="81"/>
+    <line x1="32" y1="81" x2="88" y2="81" stroke-opacity=".25"/>`,
+
+  tricep_ext: `
+    <circle cx="58" cy="8"  r="7" fill="#a8a3ff" fill-opacity="0.15"/>
+    <line x1="58" y1="15" x2="58" y2="54"/>
+    <line x1="58" y1="25" x2="44" y2="35"/>
+    <line x1="62" y1="25" x2="70" y2="8"/> <line x1="70" y1="8"  x2="78" y2="22"/>
+    <rect x="74" y="20" width="9" height="5" rx="1" stroke="#fbbf24" fill="#fbbf24"/>
+    <line x1="53" y1="54" x2="44" y2="82"/><line x1="63" y1="54" x2="72" y2="82"/>
+    <line x1="30" y1="82" x2="90" y2="82" stroke-opacity=".25"/>`,
+
+  dip: `
+    <circle cx="60" cy="14" r="7" fill="#a8a3ff" fill-opacity="0.15"/>
+    <line x1="60" y1="21" x2="60" y2="52"/>
+    <line x1="56" y1="30" x2="34" y2="42"/><line x1="34" y1="42" x2="34" y2="58"/>
+    <line x1="64" y1="30" x2="86" y2="42"/><line x1="86" y1="42" x2="86" y2="58"/>
+    <line x1="14" y1="58" x2="48"  y2="58" stroke="#fbbf24" stroke-width="2.5"/>
+    <line x1="72" y1="58" x2="106" y2="58" stroke="#fbbf24" stroke-width="2.5"/>
+    <line x1="14" y1="58" x2="14" y2="84" stroke="#fbbf24" stroke-width="2"/>
+    <line x1="106" y1="58" x2="106" y2="84" stroke="#fbbf24" stroke-width="2"/>
+    <line x1="55" y1="52" x2="50" y2="74"/><line x1="65" y1="52" x2="70" y2="74"/>`,
+
+  standing: `
+    <circle cx="60" cy="9"  r="7" fill="#a8a3ff" fill-opacity="0.15"/>
+    <line x1="60" y1="16" x2="60" y2="55"/>
+    <line x1="60" y1="26" x2="42" y2="40"/><line x1="60" y1="26" x2="78" y2="40"/>
+    <line x1="55" y1="55" x2="46" y2="82"/><line x1="65" y1="55" x2="74" y2="82"/>
+    <line x1="32" y1="82" x2="88" y2="82" stroke-opacity=".25"/>`
+};
+
+/* Maps exercise name → illustration key (first match wins) */
+function getPoseKey(nombre) {
+  const n = nombre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const rules = [
+    ['mountain',         'mountain_climber'],
+    ['step-up',          'step_up'],
+    ['step up',          'step_up'],
+    ['burpee',           'burpee'],
+    ['superman',         'superman'],
+    ['swing',            'swing'],
+    ['muerto',           'deadlift'],
+    ['tijera',           'jumping_jack'],
+    ['zancada',          'lunge'],
+    ['plancha',          'plank'],
+    ['piernas',          'leg_raise'],
+    ['dip',              'dip'],
+    ['jalon',            'bent_row'],
+    ['remo',             'bent_row'],
+    ['curl',             'curl'],
+    ['lateral',          'lateral_raise'],
+    ['extension',        'tricep_ext'],
+    ['tricep',           'tricep_ext'],
+    ['press con kettle', 'shoulder_press'],
+    ['hombros',          'shoulder_press'],
+    ['sentadilla',       'squat'],
+    ['goblet',           'squat'],
+    ['squat',            'squat'],
+    ['flexion',          'push_up'],
+    ['press',            'push_up'],
+  ];
+  for (const [kw, pose] of rules) {
+    if (n.includes(kw)) return pose;
+  }
+  return 'standing';
+}
+
+/* ══════════════════════════════════════════
+   ROUTING
+══════════════════════════════════════════ */
+function goTo(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  appState.screen = name;
+
+  const renderers = { home: renderHome, materials: renderMaterials, routine: renderRoutine };
+  if (renderers[name]) renderers[name]();
+}
+
+/* ══════════════════════════════════════════
+   HOME
+══════════════════════════════════════════ */
+function renderHome() {
+  const saved = loadAllRoutines();
+  const container = document.getElementById('home-saved');
+  if (saved.length === 0) { container.innerHTML = ''; return; }
+
+  const cards = saved.map((r, i) => `
+    <div class="routine-card">
+      <div class="routine-info">
+        <div class="routine-name">${escapeHtml(r.name)}</div>
+        <div class="routine-meta">${r.exercises.length} ejercicios · ${r.date}</div>
+      </div>
+      <div class="routine-btns">
+        <button class="btn btn-secondary btn-sm" onclick="loadRoutine(${i})">Cargar</button>
+        <button class="btn btn-danger btn-sm"    onclick="deleteRoutine(${i})">✕</button>
+      </div>
+    </div>`).join('');
+
+  container.innerHTML = `<h2 style="margin-bottom:0.75rem;">Rutinas guardadas</h2><div class="stack">${cards}</div>`;
+}
+
+function scrollToSaved() {
+  document.getElementById('home-saved').scrollIntoView({ behavior: 'smooth' });
+}
+
+/* ══════════════════════════════════════════
+   MATERIALS
+══════════════════════════════════════════ */
+function renderMaterials() {
+  document.getElementById('materials-list').innerHTML = MATERIALS_CONFIG.map(m => {
+    const sel = appState.selectedMaterials.includes(m.id);
+    return `
+      <div class="material-card ${sel ? 'selected' : ''}" onclick="toggleMaterial('${m.id}', this)">
+        <span class="material-icon">${m.icon}</span>
+        <span class="material-label">${m.label}</span>
+        <span class="check-box">${sel ? '✓' : ''}</span>
+      </div>`;
+  }).join('');
+}
+
+function toggleMaterial(id, el) {
+  const idx = appState.selectedMaterials.indexOf(id);
+  const adding = idx === -1;
+  if (adding) appState.selectedMaterials.push(id);
+  else appState.selectedMaterials.splice(idx, 1);
+  el.classList.toggle('selected', adding);
+  el.querySelector('.check-box').textContent = adding ? '✓' : '';
+}
+
+/* ══════════════════════════════════════════
+   ROUTINE GENERATION
+══════════════════════════════════════════ */
+function generateRoutine(materials) {
+  const keys = materials.length > 0 ? materials : ['bodyweight'];
+  const pool = keys.flatMap(mat =>
+    (EXERCISE_DB[mat] || []).map(ex => ({ ...ex, material: mat }))
+  );
+  const count = Math.min(pool.length, 4 + Math.floor(Math.random() * 3)); // 4–6
+  return shuffle(pool).slice(0, count);
+}
+
+function handleGenerate() {
+  if (appState.selectedMaterials.length === 0) {
+    alert('Selecciona al menos un material.');
+    return;
+  }
+  appState.currentRoutine = generateRoutine(appState.selectedMaterials);
+  goTo('routine');
+}
+
+/* ══════════════════════════════════════════
+   ROUTINE VIEW
+══════════════════════════════════════════ */
+function renderRoutine() {
+  document.getElementById('routine-list').innerHTML =
+    appState.currentRoutine.length === 0
+      ? '<p style="color:#666; text-align:center; padding:2rem 0;">Rutina vacía. Vuelve y genera una nueva.</p>'
+      : appState.currentRoutine.map((ex, i) => `
+          <div class="exercise-item">
+            <div class="exercise-row-top">
+              <span class="exercise-name">${escapeHtml(ex.nombre)}</span>
+              <span class="material-tag">${ex.material}</span>
+            </div>
+            <div class="exercise-fields">
+              <div class="field">
+                <span class="field-label">Duración (s)</span>
+                <input class="field-input" type="number" min="5" max="300" value="${ex.duracionSegundos}"
+                  onchange="updateField(${i}, 'duracionSegundos', this.value)" />
+              </div>
+              <div class="field">
+                <span class="field-label">Descanso (s)</span>
+                <input class="field-input" type="number" min="0" max="120" value="${ex.descansoSegundos}"
+                  onchange="updateField(${i}, 'descansoSegundos', this.value)" />
+              </div>
+              <button class="btn btn-danger btn-sm" style="margin-top:auto;"
+                onclick="removeExercise(${i})">✕</button>
+            </div>
+          </div>`).join('');
+}
+
+function updateField(index, field, value) {
+  appState.currentRoutine[index][field] = Math.max(0, parseInt(value, 10) || 0);
+}
+
+function removeExercise(index) {
+  appState.currentRoutine.splice(index, 1);
+  renderRoutine();
+}
+
+/* ══════════════════════════════════════════
+   SAVE / LOAD / DELETE
+══════════════════════════════════════════ */
+function saveRoutine() {
+  if (appState.currentRoutine.length === 0) { alert('La rutina está vacía.'); return; }
+  const name = prompt('Nombre de la rutina:', `Rutina ${new Date().toLocaleDateString('es-ES')}`);
+  if (name === null) return;
+  const all = loadAllRoutines();
+  all.push({ name: name.trim() || 'Sin nombre', date: new Date().toLocaleDateString('es-ES'), exercises: appState.currentRoutine });
+  localStorage.setItem('workoutRoutines', JSON.stringify(all));
+  alert('✅ Rutina guardada.');
+}
+
+function loadAllRoutines() {
+  try { return JSON.parse(localStorage.getItem('workoutRoutines') || '[]'); }
+  catch { return []; }
+}
+
+function loadRoutine(index) {
+  const all = loadAllRoutines();
+  appState.currentRoutine = structuredClone ? structuredClone(all[index].exercises) : JSON.parse(JSON.stringify(all[index].exercises));
+  goTo('routine');
+}
+
+function deleteRoutine(index) {
+  if (!confirm('¿Eliminar esta rutina?')) return;
+  const all = loadAllRoutines();
+  all.splice(index, 1);
+  localStorage.setItem('workoutRoutines', JSON.stringify(all));
+  renderHome();
+}
+
+/* ══════════════════════════════════════════
+   EXECUTION
+══════════════════════════════════════════ */
+function startExecution() {
+  if (appState.currentRoutine.length === 0) { alert('La rutina está vacía.'); return; }
+  const t = appState.timer;
+  clearInterval(t.intervalId);
+  t.exerciseIndex = 0;
+  t.phase = 'exercise';
+  t.paused = false;
+  t.startTime = Date.now();
+
+  goTo('execution');
+  loadCurrentExercise();
+  t.intervalId = setInterval(tick, 1000);
+}
+
+function loadCurrentExercise() {
+  const t = appState.timer;
+  t.phase = 'exercise';
+  t.countdown = appState.currentRoutine[t.exerciseIndex].duracionSegundos;
+  refreshExecutionUI();
+}
+
+function tick() {
+  const t = appState.timer;
+  if (t.paused) return;
+
+  t.countdown--;
+  if (t.countdown > 0) { refreshExecutionUI(); return; }
+
+  const ex = appState.currentRoutine[t.exerciseIndex];
+  if (t.phase === 'exercise' && ex.descansoSegundos > 0) {
+    t.phase = 'rest';
+    t.countdown = ex.descansoSegundos;
+    refreshExecutionUI();
+  } else {
+    nextExercise();
+  }
+}
+
+function nextExercise() {
+  const t = appState.timer;
+  t.exerciseIndex++;
+  if (t.exerciseIndex >= appState.currentRoutine.length) {
+    finishExecution();
+  } else {
+    loadCurrentExercise();
+  }
+}
+
+function refreshExecutionUI() {
+  const t = appState.timer;
+  const routine = appState.currentRoutine;
+  const total   = routine.length;
+  const isRest  = t.phase === 'rest';
+  const current = routine[t.exerciseIndex];
+  const next    = routine[t.exerciseIndex + 1];
+
+  document.getElementById('exec-counter').textContent = `${t.exerciseIndex + 1} / ${total}`;
+
+  const badge = document.getElementById('exec-phase-badge');
+  badge.textContent = isRest ? 'DESCANSO' : 'EJERCICIO';
+  badge.className   = 'phase-badge' + (isRest ? ' rest' : '');
+
+  document.getElementById('exec-name').textContent = current.nombre;
+
+  // Illustration: keep the same pose during rest (shows what's coming next)
+  const poseKey = getPoseKey(current.nombre);
+  document.getElementById('exec-illustration').innerHTML =
+    ILLUSTRATIONS[poseKey] || ILLUSTRATIONS.standing;
+
+  const timerEl = document.getElementById('exec-timer');
+  timerEl.textContent = t.countdown;
+  timerEl.className   = 'timer-display' + (isRest ? ' rest' : '');
+
+  document.getElementById('exec-next').textContent = next
+    ? `Siguiente: ${next.nombre}`
+    : 'Último ejercicio';
+
+  document.getElementById('exec-progress').style.width =
+    `${(t.exerciseIndex / total) * 100}%`;
+}
+
+function togglePause() {
+  const t = appState.timer;
+  t.paused = !t.paused;
+  document.getElementById('btn-pause').textContent = t.paused ? '▶ Reanudar' : '⏸ Pausar';
+}
+
+function confirmStop() {
+  if (confirm('¿Salir del entrenamiento?')) {
+    stopTimer();
+    goTo('home');
+  }
+}
+
+function stopTimer() {
+  clearInterval(appState.timer.intervalId);
+  appState.timer.intervalId = null;
+}
+
+function finishExecution() {
+  stopTimer();
+  const elapsed = Math.round((Date.now() - appState.timer.startTime) / 60000);
+  document.getElementById('overlay-stats').textContent =
+    `${appState.currentRoutine.length} ejercicios completados · ${elapsed || 1} min`;
+  document.getElementById('overlay-done').classList.add('show');
+}
+
+function finishRoutine() {
+  document.getElementById('overlay-done').classList.remove('show');
+  goTo('home');
+}
+
+/* ══════════════════════════════════════════
+   UTILS
+══════════════════════════════════════════ */
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/* ══════════════════════════════════════════
+   INIT
+══════════════════════════════════════════ */
+goTo('home');
+</script>
+</body>
+</html>
